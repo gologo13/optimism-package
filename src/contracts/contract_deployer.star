@@ -89,6 +89,7 @@ def _build_hardfork_schedule(chain):
         ("l2GenesisHoloceneTimeOffset", np.holocene_time_offset),
         ("l2GenesisIsthmusTimeOffset", np.isthmus_time_offset),
         ("l2GenesisJovianTimeOffset", np.jovian_time_offset),
+        ("l2GenesisKarstTimeOffset", np.karst_time_offset),
         ("l2GenesisInteropTimeOffset", np.interop_time_offset),
     )
 
@@ -171,11 +172,15 @@ def _build_chain_intent(
                     True if chain.network_params.fund_dev_accounts else False
                 ),
             },
-            "baseFeeVaultRecipient": read_chain_cmd("baseFeeVaultRecipient", chain_id),
-            "l1FeeVaultRecipient": read_chain_cmd("l1FeeVaultRecipient", chain_id),
-            "sequencerFeeVaultRecipient": read_chain_cmd(
-                "sequencerFeeVaultRecipient", chain_id
-            ),
+            # op-deployer v0.7 validates fee vault recipients as non-zero in `apply` and adds a new
+            # operatorFeeVaultRecipient field. The package never generated *FeeVaultRecipient-<id>.json
+            # files (it relied on the old op-deployer defaulting them), so the jq reads resolved to the
+            # zero address. Pin all four to a dev address for the local devnet (recipient is irrelevant
+            # to the EIP-7825 estimateGas reproduction).
+            "baseFeeVaultRecipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "l1FeeVaultRecipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "sequencerFeeVaultRecipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "operatorFeeVaultRecipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
             "roles": {
                 "batcher": read_chain_cmd("batcher", chain_id),
                 "challenger": read_chain_cmd("challenger", chain_id),

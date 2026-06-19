@@ -27,6 +27,7 @@ _DEFAULT_NETWORK_PARAMS = {
     "holocene_time_offset": None,
     "isthmus_time_offset": None,
     "jovian_time_offset": None,
+    "karst_time_offset": None,
     "interop_time_offset": None,
     "fund_dev_accounts": True,
 }
