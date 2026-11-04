@@ -20,7 +20,9 @@ write_keyfile() {
 }
 
 send() {
-  cast send $1 --value "$FUND_VALUE" --private-key "$FUND_PRIVATE_KEY" --timeout 60 --nonce "$nonce" --priority-gas-price 1gwei &
+  # Set the max fee too: on a long-running L1 the base fee decays to a few wei, and cast then estimates a
+  # max fee below the 1 gwei priority fee ("max priority fee per gas higher than max fee per gas").
+  cast send $1 --value "$FUND_VALUE" --private-key "$FUND_PRIVATE_KEY" --timeout 60 --nonce "$nonce" --gas-price 2gwei --priority-gas-price 1gwei &
   nonce=$((nonce+1))
 }
 

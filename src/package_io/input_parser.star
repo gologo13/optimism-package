@@ -53,6 +53,10 @@ def external_l1_network_params_input_parser(plan, input_args):
         el_ws_url=input_args["el_ws_url"],
         cl_rpc_url=input_args["cl_rpc_url"],
         priv_key=input_args["priv_key"],
+        # Optional: name of a files artifact in this enclave that holds the L1 genesis.json
+        # (e.g. "el_cl_genesis_data" left by an ethereum-package run). op-node needs the L1
+        # chain config for L1 chain ids it does not know.
+        el_cl_genesis_artifact=input_args.get("el_cl_genesis_artifact"),
     )
 
 

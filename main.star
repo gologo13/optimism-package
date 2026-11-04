@@ -83,6 +83,11 @@ def run(plan, args={}):
 
         plan.print("Waiting for network to sync")
         wait_for_sync.wait_for_sync(plan, l1_config_env_vars)
+
+        if external_l1_args.el_cl_genesis_artifact:
+            l1_chain_config_artifact = create_l1_chain_config(
+                plan, external_l1_args.el_cl_genesis_artifact
+            )
     else:
         plan.print("Deploying a local L1")
         l1 = ethereum_package.run(plan, ethereum_args)
@@ -102,14 +107,7 @@ def run(plan, args={}):
         plan.print("Waiting for L1 to start up")
         wait_for_sync.wait_for_startup(plan, l1_config_env_vars)
         # op-node v1.16.1+ requires a chain config file for local L1s.
-        l1_chain_config_artifact = plan.run_sh(
-            name="sanitize-l1-chain-config",
-            description="Prepare L1 chain config for op-node",
-            image=util.DEPLOYMENT_UTILS_IMAGE,
-            files={"/network-configs": "el_cl_genesis_data"},
-            store=[StoreSpec(src="/out", name="l1-chain-config")],
-            run="mkdir -p /out && jq '.config | del(.terminalTotalDifficultyPassed)' /network-configs/genesis.json > /out/l1-chain-config.json",
-        ).files_artifacts[0]
+        l1_chain_config_artifact = create_l1_chain_config(plan, "el_cl_genesis_data")
 
     deployment_output = contract_deployer.deploy_contracts(
         plan,
@@ -262,6 +260,17 @@ def get_l1_config(all_l1_participants, l1_network_params, l1_network_id):
     env_vars["L1_CHAIN_ID"] = str(l1_network_id)
     env_vars["L1_BLOCK_TIME"] = str(l1_network_params.seconds_per_slot)
     return env_vars
+
+
+def create_l1_chain_config(plan, el_cl_genesis_artifact):
+    return plan.run_sh(
+        name="sanitize-l1-chain-config",
+        description="Prepare L1 chain config for op-node",
+        image=util.DEPLOYMENT_UTILS_IMAGE,
+        files={"/network-configs": el_cl_genesis_artifact},
+        store=[StoreSpec(src="/out", name="l1-chain-config")],
+        run="mkdir -p /out && jq '.config | del(.terminalTotalDifficultyPassed)' /network-configs/genesis.json > /out/l1-chain-config.json",
+    ).files_artifacts[0]
 
 
 def _install_faucet(

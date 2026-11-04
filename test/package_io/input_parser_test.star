@@ -89,4 +89,11 @@ def test_external_l1_network_params_input_parser_set_fields(plan):
     }
     parsed_params = input_parser.external_l1_network_params_input_parser(plan, params)
 
-    expect.eq(parsed_params, struct(**params))
+    expect.eq(parsed_params, struct(el_cl_genesis_artifact=None, **params))
+
+    params_with_genesis = params | {"el_cl_genesis_artifact": "el_cl_genesis_data"}
+    parsed_params = input_parser.external_l1_network_params_input_parser(
+        plan, params_with_genesis
+    )
+
+    expect.eq(parsed_params, struct(**params_with_genesis))

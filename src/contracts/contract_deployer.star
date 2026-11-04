@@ -411,6 +411,9 @@ def deploy_contracts(
         }
         | contracts_extra_files,
         run=" && ".join(apply_cmds),
+        # op-deployer sends the L1 deployment transactions one at a time and waits for each receipt, so on an
+        # external L1 with mainnet-like slot times the apply takes longer than the 180s run_sh default.
+        wait="20m",
     )
 
     for chain in optimism_args.chains:
