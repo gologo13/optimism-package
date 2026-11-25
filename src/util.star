@@ -37,6 +37,11 @@ def write_to_file(plan, contents, directory, file_name):
     return run.files_artifacts[0]
 
 
+# File name of the single-chain interop dependency set that op-node needs once Lagoon is scheduled.
+def dependency_set_path(network_id):
+    return "dependency-set-{}.json".format(network_id)
+
+
 def to_hex_chain_id(chain_id):
     out = "%x" % int(chain_id)
     pad = 64 - len(out)

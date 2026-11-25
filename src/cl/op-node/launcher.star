@@ -52,6 +52,7 @@ def launch(
     l1_config_env_vars,
     l1_chain_config_artifact,
     observability_helper,
+    dependency_set_artifact=None,
 ):
     beacon_node_identity_recipe = PostHttpRequestRecipe(
         endpoint="/",
@@ -98,6 +99,7 @@ def launch(
         l1_config_env_vars=l1_config_env_vars,
         l1_chain_config_artifact=l1_chain_config_artifact,
         observability_helper=observability_helper,
+        dependency_set_artifact=dependency_set_artifact,
     )
 
     rpc_port = params.ports[_net.RPC_PORT_NAME]
@@ -151,6 +153,7 @@ def get_service_config(
     l1_config_env_vars,
     l1_chain_config_artifact,
     observability_helper,
+    dependency_set_artifact=None,
 ):
     ports = _net.ports_to_port_specs(params.ports)
 
@@ -205,6 +208,9 @@ def get_service_config(
         genesis_artifacts.append(l1_chain_config_artifact)
     if supervisor_params:
         genesis_artifacts.append(supervisor_params.superchain.dependency_set.name)
+    elif dependency_set_artifact:
+        # Lagoon without a supervisor: mount the single-chain dependency set (see l2/launcher.star).
+        genesis_artifacts.append(dependency_set_artifact)
 
     files = {
         _ethereum_package_constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS: Directory(
@@ -283,6 +289,15 @@ def get_service_config(
         cmd.append(
             "--rollup.l1-chain-config={0}/l1-chain-config.json".format(
                 _ethereum_package_constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS
+            )
+        )
+
+    # op-node v1.21.0+ refuses to start when Lagoon is scheduled without --interop.dependency-set.
+    if dependency_set_artifact and not supervisor_params:
+        cmd.append(
+            "--interop.dependency-set={0}/{1}".format(
+                _ethereum_package_constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS,
+                _util.dependency_set_path(network_params.network_id),
             )
         )
 

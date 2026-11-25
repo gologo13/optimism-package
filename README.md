@@ -42,6 +42,39 @@ Please note, by default your network will be running a `minimal` preset Ethereum
 
 You can also completely remove `ethereum_package` from your configuration in which case it will default to a `minimal` preset Ethereum network.
 
+## About this fork
+
+This repository is a fork of [ethpandaops/optimism-package](https://github.com/ethpandaops/optimism-package) that keeps a
+single-chain local devnet working with recent OP Stack releases. Upstream development has stalled at op-deployer v0.4.x;
+this fork carries the following changes on top of it:
+
+- **L1 chain config for op-node** ([upstream issue #404](https://github.com/ethpandaops/optimism-package/issues/404)):
+  op-node v1.16.1+ requires `--rollup.l1-chain-config` for a custom L1. The package derives it from the L1 genesis
+  (`sanitize-l1-chain-config` step in `main.star`) and mounts it into every op-node.
+- **Karst hard fork**: `network_params.karst_time_offset` is passed to op-deployer as `l2GenesisKarstTimeOffset`.
+  The fee vault recipients (`baseFeeVaultRecipient`, `l1FeeVaultRecipient`, `sequencerFeeVaultRecipient`,
+  `operatorFeeVaultRecipient`) are pinned to dev account 0 because op-deployer v0.7+ rejects zero addresses.
+- **Lagoon hard fork**: `network_params.lagoon_time_offset` is passed to op-deployer as `l2GenesisLagoonTimeOffset`,
+  and each op-node gets a single-chain interop dependency set via `--interop.dependency-set`. See
+  [Lagoon](#lagoon) below.
+
+Pin the package by commit when you run it, so that a later push to this fork does not change your devnet:
+
+```shell
+kurtosis run github.com/gologo13/optimism-package@<commit> --args-file ./network_params.yaml
+```
+
+The defaults in `src/package_io/registry.star` are still the upstream ones and are old. Set the image of each component
+explicitly in your args file. The following combination has been run end to end with this fork:
+
+| Component | Image tag |
+| --- | --- |
+| op-node | `v1.21.0` |
+| op-reth | `v2.10.0` |
+| op-batcher | `v1.16.10` |
+| op-proposer | `v1.16.3` |
+| op-deployer | `v0.7.0-rc.1` with `l1_artifacts_locator: embedded` / `l2_artifacts_locator: embedded` |
+
 ## Quickstart
 
 ### Run with your own configuration
@@ -49,7 +82,7 @@ You can also completely remove `ethereum_package` from your configuration in whi
 Kurtosis packages are parameterizable, meaning you can customize your network and its behavior to suit your needs by storing parameters in a file that you can pass in at runtime like so:
 
 ```shell
-kurtosis run github.com/ethpandaops/optimism-package --args-file https://raw.githubusercontent.com/ethpandaops/optimism-package/main/network_params.yaml
+kurtosis run github.com/gologo13/optimism-package --args-file https://raw.githubusercontent.com/gologo13/optimism-package/main/network_params.yaml
 ```
 
 For `--args-file` parameters file, you can pass a local file path or a URL to a file.
@@ -67,7 +100,7 @@ This will stop and remove all running enclaves and **delete all data**.
 If you are attempting to test any changes to the package code, you can point to the directory as the `run` argument
 
 ```shell
-cd ~/go/src/github.com/ethpandaops/optimism-package
+cd ~/go/src/github.com/gologo13/optimism-package
 kurtosis run . --args-file ./network_params.yaml
 ```
 
@@ -218,9 +251,9 @@ optimism_package:
             # The Docker image that should be used for the EL client; leave blank to use the default for the client type
             # Defaults by client:
             # - op-geth: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101511.1
-            # - op-reth: parithoshj/op-reth:latest
+            # - op-reth: ghcr.io/paradigmxyz/op-reth:v1.6.0
             # - op-erigon: testinprod/op-erigon:v2.61.3-0.9.5
-            # - op-nethermind: nethermindeth/nethermind:op-c482d56
+            # - op-nethermind: nethermind/nethermind:1.32.4
             # - op-besu: ghcr.io/optimism-java/op-besu:v0.2.2
             image: ""
 
@@ -277,12 +310,14 @@ optimism_package:
             # The type of CL client that should be started
             # Valid values are:
             # op-node
+            # kona-node
             # hildr
             type: op-node
 
             # The Docker image that should be used for the CL client; leave blank to use the default for the client type
             # Defaults by client:
             # - op-node: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.13.4
+            # - kona-node: ghcr.io/op-rs/kona/kona-node:1.0.0-rc.1
             # - hildr: ghcr.io/optimism-java/hildr:v0.4.5
             image: ""
 
@@ -346,8 +381,8 @@ optimism_package:
             # The Docker image that should be used for the builder EL client; leave blank to use the default for the client type
             # Defaults by client:
             # - op-geth: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101511.1
-            # - op-reth: parithoshj/op-reth:latest
-            # - op-rbuilder: ghcr.io/flashbots/op-rbuilder:0.1.2-interop
+            # - op-reth: ghcr.io/paradigmxyz/op-reth:v1.6.0
+            # - op-rbuilder: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-rbuilder:sha-0ec0644
             image: ""
 
             # Builder secret key used by op-rbuilder to sign transactions
@@ -358,12 +393,14 @@ optimism_package:
             # The type of builder CL client that should be started
             # Valid values are:
             # op-node
+            # kona-node
             # hildr
             type: ""
 
             # The Docker image that should be used for the builder CL client; leave blank to use the default for the client type
             # Defaults by client:
             # - op-node: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.13.4
+            # - kona-node: ghcr.io/op-rs/kona/kona-node:1.0.0-rc.1
             # - hildr: ghcr.io/optimism-java/hildr:v0.4.5
             image: ""
 
@@ -407,10 +444,21 @@ optimism_package:
         # Offset is in seconds
         jovian_time_offset: ""
 
-        # Interop fork
+        # Karst fork
+        # Defaults to None - not activated - decimal value
+        # Offset is in seconds
+        karst_time_offset: ""
+
+        # Interop fork (op-deployer < v0.8; renamed to Lagoon in op-deployer v0.8)
         # Defaults to None - not activated - decimal value
         # Offset is in seconds
         interop_time_offset: ""
+
+        # Lagoon fork (requires op-deployer v0.8+ and op-node v1.21.0+)
+        # When set, each op-node gets a single-chain interop dependency set via --interop.dependency-set
+        # Defaults to None - not activated - decimal value
+        # Offset is in seconds
+        lagoon_time_offset: ""
 
         # Whether to fund dev accounts on L2
         # Defaults to True
@@ -447,7 +495,7 @@ optimism_package:
         game_type: 1
 
         # Interval between submitting L2 output proposals
-        proposal_internal: 10m
+        proposal_interval: 10m
 
       # Default MEV configuration
       mev_params:
@@ -523,12 +571,19 @@ optimism_package:
 
   # L2 contract deployer configuration - used for all L2 networks.
   # The docker image that should be used for the L2 contract deployer.
-  # Locators can be http(s) URLs, or point to an enclave artifact with
-  # a pseudo URL artifact://NAME
+  # Locators can be http(s) URLs, tag://op-contracts/<version>, "embedded" (the contracts shipped inside the
+  # op-deployer image, op-deployer v0.7+), or point to an enclave artifact with a pseudo URL artifact://NAME
   op_contract_deployer_params:
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.4.2
-    l1_artifacts_locator: tag://op-contracts/v4.0.0
-    l2_artifacts_locator: tag://op-contracts/v4.0.0
+    # Defaults to us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.4.0-rc.2
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.7.0-rc.1
+    # Defaults to a pinned artifacts tarball on storage.googleapis.com (see src/package_io/input_parser.star)
+    l1_artifacts_locator: embedded
+    l2_artifacts_locator: embedded
+    # Only faultGameAbsolutePrestate is read. It is written to intent.globalDeployOverrides together with
+    # dangerouslyAllowCustomDisputeParameters, and used as the prestate of the additional dispute game.
+    # op-deployer v0.7 reverts the dispute game deployment ("absolutePrestate not set") unless it is non-zero.
+    overrides:
+      faultGameAbsolutePrestate: "0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98"
 
   # The global log level that all clients should log at
   # Valid values are "error", "warn", "info", "debug", and "trace"
@@ -647,6 +702,56 @@ optimism_package:
         holocene_time_offset: 4
         isthmus_time_offset: 8
 ```
+
+The offsets are seconds after the L2 genesis. Set an offset to `0` to activate the fork at genesis, and leave it unset to
+keep the fork inactive. The available keys are `fjord_time_offset`, `granite_time_offset`, `holocene_time_offset`,
+`isthmus_time_offset`, `jovian_time_offset`, `karst_time_offset`, `interop_time_offset` and `lagoon_time_offset`.
+
+#### Lagoon
+
+Lagoon activates post-execution transactions (type `0x7D`), Sequencer-Defined Metering (SDM) and interop.
+
+```yaml
+optimism_package:
+  chains:
+    op-rollup-l2:
+      participants:
+        sequencer-1:
+          el:
+            type: op-reth
+            image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:v2.10.0"
+            extra_params:
+              # Optional: make the sequencer produce 0x7D transactions and receipts with opGasRefund
+              - "--rollup.operator-sdm-opt-in=true"
+              - "--testing.sdm-fixed-policy"
+          cl:
+            image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.21.0"
+      network_params:
+        jovian_time_offset: 0
+        karst_time_offset: 0
+        lagoon_time_offset: 0
+      batcher_params:
+        image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.19.0"
+  op_contract_deployer_params:
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.9.0
+    l1_artifacts_locator: embedded
+    l2_artifacts_locator: embedded
+```
+
+- **op-deployer v0.8 or later is required.** op-deployer v0.8 renamed the interop override to `l2GenesisLagoonTimeOffset`
+  and silently ignores the old `l2GenesisInteropTimeOffset`. op-deployer v0.7 only knows the old key, which writes
+  `interop_time` into the rollup config; op-node v1.21.0 reads `lagoon_time`, so Lagoon cannot be activated with
+  op-deployer v0.7.
+- **op-node v1.21.0 or later** refuses to start when Lagoon is scheduled without `--interop.dependency-set`. When
+  `lagoon_time_offset` is set and no supervisor is configured, the package writes a dependency set that contains only the
+  chain itself (`dependency-set-<network_id>.json`) and passes it to every op-node. With a single chain the interop
+  contracts stay inactive, and without `--l2.follow.source` op-node treats local-safe blocks as safe, so the safe and
+  finalized heads keep advancing. Other CL clients (kona-node, hildr) do not receive the dependency set.
+- **0x7D transactions are not produced by default.** op-reth's built-in refund policy refunds nothing, so a sequencer
+  only appends a 0x7D transaction when both `--rollup.operator-sdm-opt-in=true` and the hidden test flag
+  `--testing.sdm-fixed-policy` are set. The test policy refunds 1 gas for every normal transaction.
+- **op-batcher v1.17.4 or later** is needed once blocks contain 0x7D transactions. Older batchers do not encode them in
+  the span batch format that op-node v1.21.0 expects.
 
 #### Multiple L2 chains
 

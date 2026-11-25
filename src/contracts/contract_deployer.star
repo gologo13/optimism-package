@@ -90,7 +90,9 @@ def _build_hardfork_schedule(chain):
         ("l2GenesisIsthmusTimeOffset", np.isthmus_time_offset),
         ("l2GenesisJovianTimeOffset", np.jovian_time_offset),
         ("l2GenesisKarstTimeOffset", np.karst_time_offset),
+        # op-deployer < v0.8 reads the pre-rename key; v0.8+ ignores it and reads l2GenesisLagoonTimeOffset.
         ("l2GenesisInteropTimeOffset", np.interop_time_offset),
+        ("l2GenesisLagoonTimeOffset", np.lagoon_time_offset),
     )
 
     # only include the hardforks that have been activated since

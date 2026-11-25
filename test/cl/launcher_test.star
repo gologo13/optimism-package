@@ -494,6 +494,73 @@ def test_l2_participant_cl_launcher_op_node(plan):
     )
 
 
+def test_l2_participant_cl_launcher_op_node_lagoon_dependency_set(plan):
+    legacy_params = _input_parser.input_parser(
+        plan=plan,
+        input_args={},
+    )
+    observability_helper = _observability.make_helper(legacy_params.observability)
+
+    l2s_params = _l2_input_parser.parse(
+        {
+            "network0": {
+                "network_params": {
+                    "lagoon_time_offset": 0,
+                },
+                "participants": {
+                    "node0": {
+                        "cl": {
+                            "type": "op-node",
+                        }
+                    }
+                },
+            }
+        },
+        registry=_default_registry,
+    )
+
+    l2_params = l2s_params[0]
+    cl_params = l2_params.participants[0].cl
+
+    kurtosistest.mock(_util, "read_network_config_value").mock_return_value(
+        "sequencer_private_key"
+    )
+
+    _cl_launcher.launch(
+        plan=plan,
+        params=cl_params,
+        network_params=l2_params.network_params,
+        supervisors_params=[],
+        conductor_params=None,
+        da_params=l2_params.da_params,
+        is_sequencer=True,
+        jwt_file=_default_jwt_file,
+        deployment_output=_default_deployment_output,
+        l1_config_env_vars=_default_l1_config_env_vars,
+        l1_chain_config_artifact=None,
+        log_level=_default_log_level,
+        persistent=True,
+        tolerations=[],
+        node_selectors={},
+        el_context=_default_el_context,
+        cl_contexts=_default_cl_contexts,
+        signer_context=None,
+        observability_helper=observability_helper,
+        dependency_set_artifact="dependency-set-2151908",
+    )
+
+    service_config = kurtosistest.get_service_config(cl_params.service_name)
+
+    expect.contains(
+        service_config.cmd,
+        "--interop.dependency-set=/network-configs/dependency-set-2151908.json",
+    )
+    expect.eq(
+        service_config.files["/network-configs"].artifact_names,
+        [_default_deployment_output, "dependency-set-2151908"],
+    )
+
+
 def test_l2_participant_cl_launcher_incompatible_conductor(plan):
     # We'll need the observability params from the legacy parser
     legacy_params = _input_parser.input_parser(

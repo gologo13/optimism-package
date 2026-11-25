@@ -26,6 +26,7 @@ def launch(
     tolerations,
     node_selectors,
     observability_helper,
+    dependency_set_artifact=None,
 ):
     cl = None
 
@@ -93,6 +94,7 @@ def launch(
             tolerations=tolerations,
             node_selectors=node_selectors,
             observability_helper=observability_helper,
+            dependency_set_artifact=dependency_set_artifact,
         )
 
     # Register metrics

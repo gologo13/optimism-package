@@ -337,6 +337,7 @@ def default_network_params():
         "jovian_time_offset": None,
         "karst_time_offset": None,
         "interop_time_offset": None,
+        "lagoon_time_offset": None,
         "fund_dev_accounts": True,
     }
 
