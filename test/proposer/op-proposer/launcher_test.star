@@ -87,6 +87,69 @@ def test_proposer_launcher_launch_without_signer(plan):
     )
 
 
+def test_proposer_launcher_launch_super_root_game_type(plan):
+    legacy_params = _input_parser.input_parser(
+        plan=plan,
+        input_args={},
+    )
+    observability_helper = _observability.make_helper(legacy_params.observability)
+
+    l2s_params = _l2_input_parser.parse(
+        {
+            "network0": {
+                "participants": {
+                    "node0": {"sequencer": True},
+                    "node1": {"sequencer": True},
+                    "node2": {"sequencer": "node0"},
+                },
+                "proposer_params": {
+                    "game_type": 5,
+                },
+            }
+        },
+        registry=_default_registry,
+    )
+
+    l2_params = l2s_params[0]
+    proposer_params = l2_params.proposer_params
+    sequencers_params = _selectors.get_sequencers_params(l2_params.participants)
+
+    _op_proposer_launcher.launch(
+        plan=plan,
+        params=proposer_params,
+        sequencers_params=sequencers_params,
+        deployment_output=_default_deployment_output,
+        l1_config_env_vars=_default_l1_config_env_vars,
+        gs_proposer_private_key="0x0",
+        game_factory_address="0x1",
+        network_params=_default_network_params,
+        observability_helper=observability_helper,
+        signer_context=None,
+    )
+
+    service_config = kurtosistest.get_service_config(proposer_params.service_name)
+
+    expect.eq(
+        service_config.cmd,
+        [
+            "op-proposer",
+            "--poll-interval=12s",
+            "--rpc.port=8560",
+            "--superroot-rpcs=http://op-cl-2151908-node0-op-node:8547,http://op-cl-2151908-node1-op-node:8547",
+            "--game-factory-address=0x1",
+            "--private-key=0x0",
+            "--l1-eth-rpc=http://l1.rpc",
+            "--allow-non-finalized=true",
+            "--game-type=5",
+            "--proposal-interval=10m",
+            "--wait-node-sync=true",
+            "--metrics.enabled",
+            "--metrics.addr=0.0.0.0",
+            "--metrics.port=9001",
+        ],
+    )
+
+
 def test_proposer_launcher_launch_with_signer(plan):
     # We'll need the observability params from the legacy parser
     legacy_params = _input_parser.input_parser(

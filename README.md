@@ -492,6 +492,9 @@ optimism_package:
         extra_params: []
 
         # Dispute game type to create via the configured DisputeGameFactory
+        # op-deployer v0.8+ registers 5 (SUPER_PERMISSIONED) instead of 1 for a new chain, so set 5 there.
+        # For the super root game types 4 and 5 the proposer gets --superroot-rpcs (the sequencer op-nodes)
+        # instead of --rollup-rpc.
         game_type: 1
 
         # Interval between submitting L2 output proposals
@@ -732,6 +735,9 @@ optimism_package:
         lagoon_time_offset: 0
       batcher_params:
         image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:v1.19.0"
+      proposer_params:
+        image: "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:v1.17.1"
+        game_type: 5
   op_contract_deployer_params:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.9.0
     l1_artifacts_locator: embedded
@@ -750,6 +756,10 @@ optimism_package:
 - **0x7D transactions are not produced by default.** op-reth's built-in refund policy refunds nothing, so a sequencer
   only appends a 0x7D transaction when both `--rollup.operator-sdm-opt-in=true` and the hidden test flag
   `--testing.sdm-fixed-policy` are set. The test policy refunds 1 gas for every normal transaction.
+- **op-deployer v0.8 or later also changes the proposer and the deployment step.** It registers the super root game type
+  5 (SUPER_PERMISSIONED) instead of 1, so set `proposer_params.game_type: 5`. The `op-deployer-apply` step waits up to
+  900 seconds and runs with `DEPLOYER_NO_VERIFY=true`, because op-deployer v0.8+ sends deploy transactions one at a time
+  and verifies contracts by default.
 - **op-batcher v1.17.4 or later** is needed once blocks contain 0x7D transactions. Older batchers do not encode them in
   the span batch format that op-node v1.21.0 expects.
 

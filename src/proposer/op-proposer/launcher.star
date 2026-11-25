@@ -58,21 +58,7 @@ def get_service_config(
         "op-proposer",
         "--poll-interval=12s",
         "--rpc.port={}".format(params.ports[_net.HTTP_PORT_NAME].number),
-        "--rollup-rpc={}".format(
-            ",".join(
-                [
-                    _net.service_url(
-                        s.conductor_params.service_name,
-                        s.conductor_params.ports[_net.RPC_PORT_NAME],
-                    )
-                    if s.conductor_params
-                    else _net.service_url(
-                        s.cl.service_name, s.cl.ports[_net.RPC_PORT_NAME]
-                    )
-                    for s in sequencers_params
-                ]
-            ),
-        ),
+        _proposal_source_flag(params, sequencers_params),
         "--game-factory-address={}".format(game_factory_address),
         "--private-key={}".format(gs_proposer_private_key),
         "--l1-eth-rpc={}".format(l1_config_env_vars["L1_RPC_URL"]),
@@ -121,4 +107,38 @@ def get_service_config(
         cmd=cmd,
         labels=params.labels,
         private_ip_address_placeholder=_ethereum_package_constants.PRIVATE_IP_ADDRESS_PLACEHOLDER,
+    )
+
+
+# Super root game types: 4 (SUPER_CANNON) and 5 (SUPER_PERMISSIONED).
+# op-deployer v0.8+ registers SUPER_PERMISSIONED as the respected game type of a new chain.
+_SUPER_ROOT_GAME_TYPES = [4, 5]
+
+
+def _proposal_source_flag(params, sequencers_params):
+    # op-proposer requires --superroot-rpcs for super root game types and rejects it together with
+    # --rollup-rpc. op-node serves superroot_atTimestamp itself, so the super root sources are the
+    # sequencer CL nodes (op-conductor does not proxy the superroot namespace).
+    if int(params.game_type) in _SUPER_ROOT_GAME_TYPES:
+        return "--superroot-rpcs={}".format(
+            ",".join(
+                [
+                    _net.service_url(s.cl.service_name, s.cl.ports[_net.RPC_PORT_NAME])
+                    for s in sequencers_params
+                ]
+            )
+        )
+
+    return "--rollup-rpc={}".format(
+        ",".join(
+            [
+                _net.service_url(
+                    s.conductor_params.service_name,
+                    s.conductor_params.ports[_net.RPC_PORT_NAME],
+                )
+                if s.conductor_params
+                else _net.service_url(s.cl.service_name, s.cl.ports[_net.RPC_PORT_NAME])
+                for s in sequencers_params
+            ]
+        )
     )

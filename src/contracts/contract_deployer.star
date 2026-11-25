@@ -397,9 +397,14 @@ def deploy_contracts(
         name="op-deployer-apply",
         description="Apply L2 contract deployments",
         image=optimism_args.op_contract_deployer_params.image,
+        # op-deployer v0.8+ sends deploy txs one by one with L1 gas estimation, which takes
+        # longer than the 180s run_sh default.
+        wait="900s",
         env_vars={
             "PRIVATE_KEY": str(priv_key),
             "DEPLOYER_CACHE_DIR": "/var/cache/op-deployer",
+            # op-deployer v0.8+ verifies contracts by default; there is no explorer on the devnet.
+            "DEPLOYER_NO_VERIFY": "true",
         }
         | l1_config_env_vars,
         store=[
