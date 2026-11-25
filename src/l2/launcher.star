@@ -6,6 +6,7 @@ _rollup_boost_launcher = import_module("/src/mev/rollup-boost/launcher.star")
 
 _selectors = import_module("./selectors.star")
 _util = import_module("/src/util.star")
+_file = import_module("/src/util/file.star")
 _net = import_module("/src/util/net.star")
 
 
@@ -37,6 +38,10 @@ def launch(
 
     da = _launch_da_maybe(
         plan=plan, da_params=params.da_params, log_prefix=network_log_prefix
+    )
+
+    dependency_set_artifact = _create_dependency_set_artifact_maybe(
+        plan=plan, network_params=network_params, log_prefix=network_log_prefix
     )
 
     # We'll need batcher private key for the batcher as well as for the signer
@@ -168,6 +173,7 @@ def launch(
             deployment_output=deployment_output,
             l1_config_env_vars=l1_config_env_vars,
             l1_chain_config_artifact=l1_chain_config_artifact,
+            dependency_set_artifact=dependency_set_artifact,
             log_level=log_level,
             persistent=persistent,
             tolerations=tolerations,
@@ -204,6 +210,7 @@ def launch(
             deployment_output=deployment_output,
             l1_config_env_vars=l1_config_env_vars,
             l1_chain_config_artifact=l1_chain_config_artifact,
+            dependency_set_artifact=dependency_set_artifact,
             log_level=log_level,
             persistent=persistent,
             tolerations=tolerations,
@@ -258,6 +265,7 @@ def _launch_sidecar_maybe(
     deployment_output,
     l1_config_env_vars,
     l1_chain_config_artifact,
+    dependency_set_artifact,
     log_level,
     persistent,
     tolerations,
@@ -354,6 +362,7 @@ def _launch_sidecar_maybe(
             deployment_output=deployment_output,
             l1_config_env_vars=l1_config_env_vars,
             l1_chain_config_artifact=l1_chain_config_artifact,
+            dependency_set_artifact=dependency_set_artifact,
             log_level=log_level,
             persistent=persistent,
             tolerations=tolerations,
@@ -400,3 +409,24 @@ def _launch_signer_maybe(
         )
 
         plan.print("{}: Successfully launched signer".format(log_prefix))
+
+
+def _create_dependency_set_artifact_maybe(plan, network_params, log_prefix):
+    # op-node refuses to start when Lagoon is scheduled without an interop dependency set
+    # (op-node/config/config.go). A single-chain set containing only this chain is enough:
+    # interop contracts are activated only when the set has more than one chain, and without
+    # --l2.follow.source op-node treats local-safe as safe, so safe/finalized keep advancing.
+    if network_params.lagoon_time_offset == None:
+        return None
+
+    plan.print("{}: Creating single-chain dependency set for Lagoon".format(log_prefix))
+
+    return _file.from_string(
+        plan=plan,
+        path=_util.dependency_set_path(network_params.network_id),
+        contents=json.encode({"dependencies": {str(network_params.network_id): {}}}),
+        artifact_name="dependency-set-{}".format(network_params.network_id),
+        description="Creating a dependency set file for L2 network {}".format(
+            network_params.network_id
+        ),
+    )

@@ -407,10 +407,21 @@ optimism_package:
         # Offset is in seconds
         jovian_time_offset: ""
 
-        # Interop fork
+        # Karst fork
+        # Defaults to None - not activated - decimal value
+        # Offset is in seconds
+        karst_time_offset: ""
+
+        # Interop fork (op-deployer < v0.8; renamed to Lagoon in op-deployer v0.8)
         # Defaults to None - not activated - decimal value
         # Offset is in seconds
         interop_time_offset: ""
+
+        # Lagoon fork (requires op-deployer v0.8+ and op-node v1.21.0+)
+        # When set, each op-node gets a single-chain interop dependency set via --interop.dependency-set
+        # Defaults to None - not activated - decimal value
+        # Offset is in seconds
+        lagoon_time_offset: ""
 
         # Whether to fund dev accounts on L2
         # Defaults to True
